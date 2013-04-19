@@ -56,7 +56,7 @@ private:
 class timer_manager
 {
 public:
-	timer_manager   (uint32_t min, uint32_t max, uint32_t idle);
+	timer_manager   (uint32_t min = 1, uint32_t max = 65536, uint32_t idle = 10 * 60 * 1000);
 
 	void			add(const boost::shared_ptr<timer_task> &task);
 	void			stop(const boost::shared_ptr<timer_task> &task);
