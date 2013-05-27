@@ -43,17 +43,16 @@ class MyTask : public task
 {
 public:
 	MyTask() { canceled = false; }
-	virtual int run() {
+	virtual void run() {
 		if (canceled) // in case being canceled before run
-			return -1;
-		for (int i = 0; i < 30; i++) {
+			return;
+		for (int i = 0; i < 300; i++) {
 			this->update_progress(i);
 			if (canceled)
-				return -1;
+				return;
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
 			std::cout << (canceled ? "1" : "0");
 		}
-		return 0;
 	}
 
 	virtual void cancel() {
@@ -69,18 +68,18 @@ class TimerTask : public timer_task
 {
 public:
 	TimerTask () { count = 0; canceled = false; }
-	virtual int run() {
+	timer_task::ACTION timer_run() {
 		if (canceled) {
 			std::cout << "canceled" << std::endl;
-			return -1;
+			return timer_task::DONE;
 		}
 		std::cout << "timer run " << count++ << std::endl;
 		if (count == 10) {
 			std::cout << "done" << std::endl;
-			return -1;
+			return timer_task::DONE;
 		} else {
 			this->set_interval(1000*count);
-			return 0;
+			return timer_task::CONTINUE;
 		}
 	}
 	virtual void cancel() {
@@ -92,6 +91,9 @@ private:
 	volatile bool canceled;
 };
 
+
+#define A(x, y) x##y
+
 int main(void)
 {
 	timer_manager mgr;
@@ -101,33 +103,10 @@ int main(void)
 	tt2->set_timeout(0);
 	//mgr.add(tt1);
 	mgr.add(tt2);
-	//mgr.add(tt2);
 	boost::this_thread::sleep(boost::posix_time::seconds(20));
 	mgr.stop(tt2);
 	boost::this_thread::sleep(boost::posix_time::seconds(100));
 	return 0;
-
-	task_manager tm(1, 10, 10000);
-	taskp p1(new MyTask());
-	tm.add(p1);
-	boost::this_thread::sleep(boost::posix_time::seconds(10));
-	cout << p1->string() << endl;
-	p1->wait();
-	cout << p1->string() << endl;
-	taskp p2(new MyTask());
-	taskp p3(new MyTask());
-	std::vector<taskp> ts;
-	ts.push_back(p2);
-	ts.push_back(p3);
-	tm.addv(ts);
-	tm.timed_wait_all(ts, 10000);
-	cout << p2->string() << endl;
-	cout << p3->string() << endl;
-	tm.stopv(ts);
-	tm.wait_all(ts);
-	cout << p2->string() << endl;
-	cout << p3->string() << endl;
-	boost::this_thread::sleep(boost::posix_time::seconds(30));
 }
 
 

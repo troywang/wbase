@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <stdint.h>
 #include <sys/time.h>
-#include <iostream>
 #include <boost/thread.hpp>
 #include <boost/noncopyable.hpp>
 

@@ -9,11 +9,11 @@
 #include "timer_manager.h"
 namespace wbase { namespace common { namespace utils {
 
-timer_task::timer_task(uint32_t timeout_ms, uint32_t interval_ms, int until_code)
+timer_task::timer_task(uint32_t timeout_ms, uint32_t interval_ms)
 {
 	m_timeout = timeout_ms;
 	m_interval = interval_ms;
-	m_untilcode = until_code;
+	m_action = INVALID;
 }
 
 std::string timer_task::string()
@@ -23,7 +23,7 @@ std::string timer_task::string()
 	oss << "[";
 	oss << "timeout: " << m_timeout << ", ";
 	oss << "interval: " << m_interval << ", ";
-	oss << "untilcode: " << m_untilcode;
+	oss << "action: " << m_action;
 	oss << "]";
 	return oss.str();
 }
@@ -46,7 +46,7 @@ void timer_scheduler::do_add(const boost::shared_ptr<timer_task> &task, const bo
 void timer_scheduler::add(const taskp &task)
 {
 	boost::shared_ptr<timer_task> ttask = boost::dynamic_pointer_cast<timer_task>(task);
-	uint32_t timeout = ttask->get_timeout();
+	uint32_t timeout = ttask->timeout();
 	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(timeout);
 	do_add(ttask, until);
 }
@@ -110,11 +110,11 @@ void timer_scheduler::put(const taskp &task)
 		return;
 
 	boost::shared_ptr<timer_task> ttask = boost::dynamic_pointer_cast<timer_task>(task);
-	if (task->code() == ttask->get_untilcode())
+	if (ttask->action() != timer_task::CONTINUE)
 		return;
 
 	//schedule for next run
-	uint32_t interval = ttask->get_interval();
+	uint32_t interval = ttask->interval();
 	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(interval);
 	do_add(ttask, until);
 }

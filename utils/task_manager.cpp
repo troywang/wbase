@@ -7,6 +7,8 @@
 
 #include <sstream>
 #include "task_manager.h"
+#include <iostream>
+using namespace std;
 
 namespace wbase { namespace common { namespace utils {
 
@@ -16,7 +18,6 @@ task::task()
 	m_create = time(NULL);
 	m_begin = m_end = 0;
 	m_prog = 0;
-	m_code = 0;
 }
 
 void task::start()
@@ -25,14 +26,14 @@ void task::start()
 	m_begin = time(NULL);
 	m_status = RUNNING;
 	lock.unlock();
-	m_code = run();
+	run();
 	lock.lock();
 	if (m_status == RUNNING) {
 		m_status = COMPLETED;
 		m_end = time(NULL);
 		m_cond.notify_all(); //可能有多个线程同时在wait task
 		lock.unlock();
-		on_complete(m_code);
+		on_complete();
 	}
 }
 
@@ -61,7 +62,6 @@ std::string task::string()
 	oss << "begin_time: " << m_begin << ", ";
 	oss << "end_time: " << m_end << ", ";
 	oss << "progress: " << m_prog << ", ";
-	oss << "return_code: " << m_code << ", ";
 	oss << "status: " << m_status;
 	oss << "]";
 	return oss.str();
@@ -99,13 +99,11 @@ bool task::timed_wait(const boost::system_time &until)
 worker::worker(task_manager &mgr) : m_mgr(mgr)
 {
 	m_thread.reset(new boost::thread(boost::ref(*this)));
-	std::cout << "worker created " << m_thread->get_id() << std::endl;
 }
 
 worker::~worker()
 {
 	if (m_thread.get()) {
-		std::cout << "worker reclaimed " << m_thread->get_id() << std::endl;
 		m_thread->interrupt();
 		m_thread->join();
 		m_thread.reset();
@@ -168,7 +166,8 @@ task_manager::task_manager(uint32_t min, uint32_t max, uint32_t idle,
 task_manager::~task_manager()
 {
 	if (m_thread.get()) {
-		m_thread->interrupt();
+		m_thread->interrupt(); //interrupt before post
+		m_sem->post();
 		m_thread->join();
 		m_thread.reset();
 	}
@@ -247,7 +246,8 @@ void task_manager::operator()()
 
 void task_manager::get_worker(workerp &wkr)
 {
-	m_sem->wait();
+	m_sem->wait(); // cannot be interrupted
+	boost::this_thread::interruption_point();
 	boost::mutex::scoped_lock lock(m_mutex);
 	if (!m_idle_workers.empty()) {
 		wkr = m_idle_workers.front();

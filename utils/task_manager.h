@@ -36,7 +36,6 @@ public:
 	virtual ~task () {}
 	virtual std::string string();
 
-	int		 			code() { return m_code; }
 	status				stat() { return m_status; }
 	uint16_t 			progress() { return m_prog; }
 	time_t				create_time() { return m_create; }
@@ -48,11 +47,11 @@ public:
 	bool				timed_wait(const boost::system_time &until);
 
 	//do the real work
-	virtual int			run() = 0;
+	virtual void			run() = 0;
 	//interrupt run
 	virtual void		cancel() = 0;
 	//called when run completed
-	virtual void		on_complete(int code) {}
+	virtual void		on_complete() {}
 	//called when cancel completed
 	virtual void 		on_cancel() {}
 
@@ -69,7 +68,6 @@ private:
 	time_t 						m_begin;
 	time_t 						m_end;
 	uint16_t 					m_prog;
-	int							m_code;
 
 	boost::mutex				m_mutex;
 	boost::condition_variable	m_cond;
