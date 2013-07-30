@@ -67,5 +67,6 @@ clean:
 	-rm -f $(TARGET)
 	-rm -f *.d.*
 	-rm -f *.d
+	-rm -f *.o
 
 -include $(LOCAL_DEPS)

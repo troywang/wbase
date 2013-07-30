@@ -6,7 +6,7 @@ CPP = g++
 # SOURCE Code directory and filenames
 ################################################################################################
 OUTPUT_PATH = ../../bin/test
-${shell mkdir -p ${OUTPUT_PATH} 2> /dev/null}
+$(shell mkdir -p $(OUTPUT_PATH) 2>/dev/null)
 CURRENT_DIR = $(notdir $(PWD))
 
 SOURCES += $(wildcard *.cpp)
@@ -30,15 +30,13 @@ CPPFLAGS += -Wall -Wextra -Wno-unused-parameter -g $(INCLUDES)
 BOOST_LIBS = -lboost_thread \
 			 -lboost_filesystem \
 			 -lboost_system \
-			 -lboost_date_time \
+			 -lboost_date_time
+
+
+GOOGLE_LIBS = -lglog -lgflags
 
 LIBS += -lgtest \
-		-lgtest-main
-		
-GOOGLE_LIBS = -lgflags \
-			  -lglog
-
-GCC_LIBS = -lpthread
+		-lgtest-main 
 
 GCC_VERSION := $(shell g++ -dumpversion)
 LBITS = $(shell getconf LONG_BIT)
@@ -52,7 +50,7 @@ endif
 LDFLAGS += -L$(OUTPUT_PATH) \
 		   -L$(OUTPUT_PATH)/../
 
-ALL_LIBS = $(LDFLAGS) $(LIBS) ${GCC_LIBS} $(BOOST_LIBS) ${GOOGLE_LIBS}
+ALL_LIBS = $(LDFLAGS) $(LIBS) $(BOOST_LIBS) $(GOOGLE_LIBS) -lpthread $(LIBS) 
 
 ################################################################################################
 # Common Rules
