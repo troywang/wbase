@@ -8,13 +8,6 @@
 #ifndef SERIALIZE_HPP_
 #define SERIALIZE_HPP_
 
-#include <map>
-#include <set>
-#include <vector>
-#include <stdarg.h>
-#include <stdint.h>
-#include <netinet/in.h>
-#include <iostream>
 #include "base.hpp"
 
 namespace wbase { namespace common { namespace core {

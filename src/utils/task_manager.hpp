@@ -8,15 +8,6 @@
 #ifndef THREAD_POOL_H_
 #define THREAD_POOL_H_
 
-#include <set>
-#include <deque>
-#include <time.h>
-#include <boost/thread.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/interprocess/sync/interprocess_semaphore.hpp>
-
 #include "core/base.hpp"
 #include "block_queue.hpp"
 
@@ -94,24 +85,7 @@ public:
 		}
 	}
 
-	void operator()() {
-		boost::mutex::scoped_lock lock(m_mutex);
-		try
-		{
-			while (!boost::this_thread::interruption_requested())
-			{
-				while (!m_tsk.get()) {
-					m_cond.wait(lock);
-				}
-				m_tsk->start();
-				m_active_time = time(NULL);
-				m_mgr.put_task(m_tsk);
-				m_tsk.reset();
-				m_mgr.put_worker((dynamic_cast<worker<Task, Sched>*>(this))->shared_from_this());
-			}
-		} catch (boost::thread_interrupted &msg) {
-		}
-	}
+	void operator()();
 
 private:
 	void acquire(taskp task) {
@@ -129,6 +103,28 @@ private:
 	       boost::condition_variable	m_cond;
 	boost::shared_ptr<boost::thread> 	m_thread;
 };
+
+template<typename Task, template<class> class Sched>
+void worker<Task, Sched>::operator() ()
+{
+	boost::mutex::scoped_lock lock(m_mutex);
+	try
+	{
+		while (!boost::this_thread::interruption_requested())
+		{
+			while (!m_tsk.get()) {
+				m_cond.wait(lock);
+			}
+			m_tsk->start();
+			m_active_time = time(NULL);
+			m_mgr.put_task(m_tsk);
+			m_tsk.reset();
+			m_mgr.put_worker((dynamic_cast<worker<Task, Sched>*>(this))->shared_from_this());
+		}
+	} catch (boost::thread_interrupted &msg) {
+	}
+}
+
 
 template<typename T>
 class scheduler : public boost::noncopyable
@@ -154,6 +150,7 @@ protected:
 	virtual ~scheduler() {}
 };
 
+
 template<typename Task, template<class> class Sched>
 class task_manager : public Sched<Task>
 {
@@ -162,32 +159,9 @@ public:
 	typedef typename Sched<Task>::taskp taskp;
 	typedef boost::shared_ptr<worker<Task, Sched> > workerp;
 
-	 task_manager (uint32_t min = 1, uint32_t max = 65535, uint32_t idle = 600 * 1000)
-	 {
-		if (min > max)
-			max = min;
+	task_manager (uint32_t min = 1, uint32_t max = 1024, uint32_t idle = 600 * 1000);
 
-		m_min = min;
-		m_max = max;
-		m_idle = idle;
-		m_thread.reset(new boost::thread(boost::ref(*this)));
-		for (uint32_t i = 0; i < m_min; i++) {
-			m_idle_workers.push_back(workerp(new worker<Task, Sched>(*this)));
-		}
-		m_sem.reset(new boost::interprocess::interprocess_semaphore(m_max));
-	 }
-
-	~task_manager () {
-		if (m_thread.get()) {
-			m_thread->interrupt(); //interrupt before post
-			m_sem->post();
-			m_thread->join();
-			m_thread.reset();
-		}
-		if (m_sem.get()) {
-			m_sem.reset();
-		}
-	}
+	~task_manager ();
 
 	bool add(const taskp &task) { return this->add_task(task); }
 	void stop(const taskp &task) { task->stop(); }
@@ -205,6 +179,7 @@ public:
 	bool timed_wait(const taskp &task, uint32_t timeout_ms) {
 		return task->timed_wait(timeout_ms);
 	}
+
 	void wait_all(const std::vector<taskp> &tasks) {
 		for (size_t i = 0; i < tasks.size(); i++)
 			tasks[i]->wait();
@@ -219,24 +194,7 @@ public:
 		return true;
 	}
 
-	void operator()() {
-		try
-		{
-			while (!boost::this_thread::interruption_requested())
-			{
-				taskp task;
-				//TODO only do timed_get when current # of workers > m_idle
-				if (!this->timed_get(task, m_idle)) {
-					reclaim_workers();
-				} else {
-					workerp worker;
-					get_worker(worker);
-					worker->acquire(task);
-				}
-			}
-		} catch (boost::thread_interrupted &msg) {
-		}
-	}
+	void operator()();
 
 	void					set_min(size_t min) { m_min = min; }
 	void					set_max(size_t max) { m_max = max; }
@@ -247,36 +205,11 @@ public:
 	uint32_t				get_idle() { return m_idle; }
 
 private:
-	void reclaim_workers() {
-		boost::mutex::scoped_lock lock(m_mutex);
-		size_t td = m_idle_workers.size() + m_active_workers.size() - m_min;
-		while (td-- != 0 && !m_idle_workers.empty()) {
-			m_idle_workers.pop_back(); //reclaim the oldest first
-		}
-	}
+	void reclaim_workers();
 
-	void put_worker(workerp worker) {
-		boost::mutex::scoped_lock lock(m_mutex);
-		BOOST_ASSERT(m_active_workers.erase(worker) > 0);
-		//put the youngest one in front of the queue
-		m_idle_workers.push_front(worker);
-		m_sem->post();
-	}
+	void put_worker(workerp worker);
 
-	void get_worker(workerp &wkr) {
-		m_sem->wait(); // cannot be interrupted
-		boost::this_thread::interruption_point();
-		boost::mutex::scoped_lock lock(m_mutex);
-		if (!m_idle_workers.empty()) {
-			wkr = m_idle_workers.front();
-			//reuse the youngest one
-			m_idle_workers.pop_front();
-			m_active_workers.insert(wkr);
-		} else {
-			wkr.reset(new worker<Task, Sched>(*this));
-			m_active_workers.insert(wkr);
-		}
-	}
+	void get_worker(workerp &wkr);
 
 private:
 	size_t		m_min;
@@ -289,6 +222,94 @@ private:
 	std::auto_ptr<boost::thread>	m_thread;
 	std::auto_ptr<boost::interprocess::interprocess_semaphore> m_sem;
 };
+
+template<typename Task, template<class> class Sched>
+task_manager<Task, Sched>::task_manager (uint32_t min, uint32_t max, uint32_t idle)
+{
+	if (min > max)
+		max = min;
+
+	m_min = min;
+	m_max = max;
+	m_idle = idle;
+	m_thread.reset(new boost::thread(boost::ref(*this)));
+	for (uint32_t i = 0; i < m_min; i++) {
+		m_idle_workers.push_back(workerp(new worker<Task, Sched>(*this)));
+	}
+	m_sem.reset(new boost::interprocess::interprocess_semaphore(m_max));
+}
+
+template<typename Task, template<class> class Sched>
+task_manager<Task, Sched>::~task_manager ()
+{
+	if (m_thread.get()) {
+		m_thread->interrupt(); //interrupt before post
+		m_sem->post();
+		m_thread->join();
+		m_thread.reset();
+	}
+	if (m_sem.get()) {
+		m_sem.reset();
+	}
+}
+
+template<typename Task, template<class> class Sched>
+void task_manager<Task, Sched>::operator() ()
+{
+	try
+	{
+		while (!boost::this_thread::interruption_requested())
+		{
+			taskp task;
+			//TODO only do timed_get when current # of workers > m_idle
+			if (!this->timed_get(task, m_idle)) {
+				reclaim_workers();
+			} else {
+				workerp worker;
+				get_worker(worker);
+				worker->acquire(task);
+			}
+		}
+	} catch (boost::thread_interrupted &msg) {
+	}
+}
+
+template<typename Task, template<class> class Sched>
+void task_manager<Task, Sched>::reclaim_workers()
+{
+	boost::mutex::scoped_lock lock(m_mutex);
+	size_t td = m_idle_workers.size() + m_active_workers.size() - m_min;
+	while (td-- != 0 && !m_idle_workers.empty()) {
+		m_idle_workers.pop_back(); //reclaim the oldest first
+	}
+}
+
+template<typename Task, template<class> class Sched>
+void task_manager<Task, Sched>::put_worker(workerp worker)
+{
+	boost::mutex::scoped_lock lock(m_mutex);
+	BOOST_ASSERT(m_active_workers.erase(worker) > 0);
+	//put the youngest one in front of the queue
+	m_idle_workers.push_front(worker);
+	m_sem->post();
+}
+
+template<typename Task, template<class> class Sched>
+void task_manager<Task, Sched>::get_worker(workerp &wkr)
+{
+	m_sem->wait(); // cannot be interrupted
+	boost::this_thread::interruption_point();
+	boost::mutex::scoped_lock lock(m_mutex);
+	if (!m_idle_workers.empty()) {
+		wkr = m_idle_workers.front();
+		//reuse the youngest one
+		m_idle_workers.pop_front();
+		m_active_workers.insert(wkr);
+	} else {
+		wkr.reset(new worker<Task, Sched>(*this));
+		m_active_workers.insert(wkr);
+	}
+}
 
 } } }
 

@@ -5,8 +5,6 @@
  *      Author: wanghuan@readsns.com
  */
 
-#include <sstream>
-#include <iostream>
 #include "task_manager.hpp"
 using namespace std;
 

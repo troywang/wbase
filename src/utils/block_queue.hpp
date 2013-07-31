@@ -7,12 +7,7 @@
 #ifndef __WBASE_BLOCK_QUEUE__
 #define __WBASE_BLOCK_QUEUE__
 
-#include <deque>
-#include <errno.h>
-#include <stdint.h>
-#include <sys/time.h>
-#include <boost/thread.hpp>
-#include <boost/noncopyable.hpp>
+#include "core/base.hpp"
 
 namespace wbase { namespace common { namespace utils {
 
@@ -30,11 +25,11 @@ public:
 	void				pop_back(/* out */ Data &data);
 
 	/* timeout in milliseconds */
-	bool 				timed_push_back(const Data &data, uint32_t timeout);
-	bool 				timed_pop_front(/* out */ Data &data, uint32_t timeout);
+	bool 				timed_push_back(const Data &data, uint32_t timeout_ms);
+	bool 				timed_pop_front(/* out */ Data &data, uint32_t timeout_ms);
 
-	bool				timed_push_front(const Data &data, uint32_t timeout);
-	bool				timed_pop_back(/* out */ Data &data, uint32_t timeout);
+	bool				timed_push_front(const Data &data, uint32_t timeout_ms);
+	bool				timed_pop_back(/* out */ Data &data, uint32_t timeout_ms);
 
 	size_t				cap() { return m_cap; }
 	size_t				size() { return m_queue.size(); }
@@ -96,11 +91,12 @@ void block_queue<Data>::pop_back(/* out */ Data &data)
 }
 
 template<typename Data>
-bool block_queue<Data>::timed_push_back(const Data &data, uint32_t timeout)
+bool block_queue<Data>::timed_push_back(const Data &data, uint32_t timeout_ms)
 {
+	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(timeout_ms);
 	boost::mutex::scoped_lock lock(m_mutex);
 	while (m_queue.size() >= m_cap) {
-		if (!m_cond_en.timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
+		if (!m_cond_en.timed_wait(lock, until)) {
 			return false;
 		}
 	}
@@ -110,11 +106,12 @@ bool block_queue<Data>::timed_push_back(const Data &data, uint32_t timeout)
 }
 
 template<typename Data>
-bool block_queue<Data>::timed_pop_front(/* out */ Data &data, uint32_t timeout)
+bool block_queue<Data>::timed_pop_front(/* out */ Data &data, uint32_t timeout_ms)
 {
+	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(timeout_ms);
 	boost::mutex::scoped_lock lock(m_mutex);
 	while (m_queue.empty()) {
-		if (!m_cond_de.timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
+		if (!m_cond_de.timed_wait(lock, until)) {
 			return false;
 		}
 	}
@@ -125,11 +122,12 @@ bool block_queue<Data>::timed_pop_front(/* out */ Data &data, uint32_t timeout)
 }
 
 template<typename Data>
-bool block_queue<Data>::timed_push_front(const Data &data, uint32_t timeout)
+bool block_queue<Data>::timed_push_front(const Data &data, uint32_t timeout_ms)
 {
+	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(timeout_ms);
 	boost::mutex::scoped_lock lock(m_mutex);
 	while (m_queue.size() >= m_cap) {
-		if (!m_cond_en.timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
+		if (!m_cond_en.timed_wait(lock, until)) {
 			return false;
 		}
 	}
@@ -139,11 +137,12 @@ bool block_queue<Data>::timed_push_front(const Data &data, uint32_t timeout)
 }
 
 template<typename Data>
-bool block_queue<Data>::timed_pop_back(/* out */ Data &data, uint32_t timeout)
+bool block_queue<Data>::timed_pop_back(/* out */ Data &data, uint32_t timeout_ms)
 {
+	boost::system_time until = boost::get_system_time() + boost::posix_time::milliseconds(timeout_ms);
 	boost::mutex::scoped_lock lock(m_mutex);
 	while (m_queue.empty()) {
-		if (!m_cond_de.timed_wait(lock, timeout)) {
+		if (!m_cond_de.timed_wait(lock, until)) {
 			return false;
 		}
 	}
