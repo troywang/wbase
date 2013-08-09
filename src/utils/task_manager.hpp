@@ -219,7 +219,7 @@ private:
 	std::set<workerp>		m_active_workers;
 	std::deque<workerp>		m_idle_workers;
 	boost::mutex			m_mutex; // mutex for workers
-	std::auto_ptr<boost::thread>	m_thread;
+	std::auto_ptr<boost::thread>	m_thread; //scheduler
 	std::auto_ptr<boost::interprocess::interprocess_semaphore> m_sem;
 };
 

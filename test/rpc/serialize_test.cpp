@@ -14,7 +14,7 @@ using namespace wbase::common::core;
 struct test_serial : public serializable
 {
 	virtual ~test_serial() {}
-	virtual void serialize(std::ostream &out) {
+	virtual void serialize(std::ostream &out) const {
 		serializer s(out);
 		s.serialize(a);
 	}
@@ -72,7 +72,7 @@ TEST_F(SerializeTest, TestAll)
 		s.serialize(v);
 		s.serialize(st);
 		s.serialize(m);
-		s.serialize(t);
+		s.serialize(&t);
 		of.close();
 
 		std::ifstream in("/tmp/test");

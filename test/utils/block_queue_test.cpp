@@ -73,7 +73,7 @@ public:
 		if (canceled) {
 			return;
 		}
-		for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < 10; i++) {
 			this->update_progress(i);
 			if (canceled) {
 				std::cout << prio() << " canceled" << std::endl;
@@ -123,10 +123,10 @@ TEST_F(BlockQueueTestFixture, TestTimer)
 
 TEST_F(BlockQueueTestFixture, TestPrio)
 {
-	prio_task_mgr pmgr;
+	prio_task_mgr pmgr(1, 1, 60 * 1000);
 	prio_task_mgr::taskp pt1(new PrioTask(NORMAL));
-	prio_task_mgr::taskp pt2(new PrioTask(HIGH));
 	prio_task_mgr::taskp pt3(new PrioTask(IDLE));
+	prio_task_mgr::taskp pt2(new PrioTask(HIGH));
 	pmgr.add(pt1);
 	pmgr.add(pt2);
 	pmgr.add(pt3);

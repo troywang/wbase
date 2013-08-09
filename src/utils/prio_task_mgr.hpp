@@ -12,24 +12,24 @@
 
 namespace wbase { namespace common { namespace utils {
 
-enum PRIO {IDLE = 0, LOW, NORMAL, HIGH, REALTIME};
+enum PRIO { IDLE = 0, LOW, NORMAL, HIGH, REALTIME };
 
 class prio_task : public task
 {
 public:
-	prio_task  (PRIO prio) { m_prio = prio; }
-	virtual ~prio_task() {}
+						prio_task  (PRIO prio) { m_prio = prio; }
+				virtual ~prio_task() {}
 
-	virtual std::string 	string() {
+	virtual std::string string() {
 		std::ostringstream oss;
 		oss << task::string();
 		oss << "[prio: " << m_prio << "]";
 		return oss.str();
 	}
-				   PRIO		prio() { return m_prio; }
+				   PRIO	prio() { return m_prio; }
 
 private:
-	PRIO	m_prio;
+				   PRIO	m_prio;
 };
 
 template<typename T>

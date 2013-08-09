@@ -12,44 +12,19 @@
 
 namespace wbase { namespace common { namespace core {
 
-enum TYPE { NIL, BOOL, INT8, UINT8, INT16, UINT16, INT32, UINT32, INT64,
-	UINT64, FLOAT, DOUBLE, STRING, VECTOR, SET, MAP };
+enum TYPE { NIL = 0, BOOL = 1, INT8 = 2, UINT8 = 3, INT16 = 4, UINT16 = 5, INT32 = 6, UINT32 = 7, INT64 = 8,
+	UINT64 = 9, FLOAT = 10, DOUBLE = 11, STRING = 12, VECTOR = 13, SET = 14, MAP = 15 };
 
-class serial_exception : public std::exception {
+class serial_exception : public exception_base {
 public:
-	serial_exception(const std::string &fmt, ...)
-	{
-		va_list ap;
-		int size = 100;
-		while (true) {
-			char buf[size];
-			va_start(ap, fmt);
-			int n = vsnprintf(buf, size, fmt.c_str(), ap);
-			va_end(ap);
-
-			if (n > -1 &&  n < size) {
-				m_str.assign(buf, n);
-				break;
-			}
-
-			size *= 2;
-		}
-	}
-
+	serial_exception(const std::string &str) : exception_base(str) {}
 	virtual ~serial_exception() throw() {}
-
-	const char* what() {
-		return m_str.c_str();
-	}
-
-private:
-	std::string m_str;
 };
 
 class serializable {
 public:
 	virtual ~serializable() {}
-	virtual void serialize(std::ostream &out) = 0;
+	virtual void serialize(std::ostream &out) const = 0;
 	virtual void deserialize(std::istream &in) = 0;
 };
 
@@ -58,63 +33,68 @@ public:
 	serializer(std::ostream &stream) : m_out(stream) {}
 
 	template<typename T>
-	serializer& serialize(T &t) {
+	serializer& serialize(const T &t) {
 		write_to(t, int2type<SUPER_SUB_CLASS(serializable, T) >()); //dispatch
 		return *this;
 	}
 
 private:
 	template<typename T>
-	void write_to(T &t, int2type<true>) {
+	void write_to(const T &t, int2type<true>) {
 		t.serialize(m_out);
 	}
 
 	template<typename T>
-	void write_to(T &t, int2type<false>) {
+	void write_to(const T *t, int2type<true>) {
+		t->serialize(m_out);
+	}
+
+	template<typename T>
+	void write_to(const T &t, int2type<false>) {
 		native_write(t);
 	}
 
-	void native_write(bool b) {
+	void native_write(const bool b) {
 		write_type(BOOL);
 		write_data(b);
 	}
 
-	void native_write(int8_t i8) {
+	void native_write(const int8_t i8) {
 		write_type(INT8);
 		write_data(i8);
 	}
 
-	void native_write(uint8_t ui8) {
+	void native_write(const uint8_t ui8) {
 		write_type(UINT8);
 		write_data(ui8);
 	}
 
-	void native_write(int16_t i16) {
+	void native_write(const int16_t i16) {
 		write_type(INT16);
 		write_data(htobe16(i16));
 	}
 
-	void native_write(uint16_t ui16) {
+	void native_write(const uint16_t ui16) {
 		write_type(UINT16);
 		write_data(htobe16(ui16));
 	}
 
-	void native_write(int32_t i32) {
+	void native_write(const int32_t i32) {
 		write_type(INT32);
 		write_data(htobe32(i32));
 	}
 
-	void native_write(uint32_t ui32) {
+	void native_write(const uint32_t ui32) {
 		write_type(UINT32);
 		write_data(htobe32(ui32));
 	}
 
-	void native_write(int64_t i64) {
+	void native_write(const int64_t i64) {
 		write_type(INT64);
 		write_data(htobe64(i64));
 	}
 
-	void native_write(uint64_t ui64) {
+	void native_write(const uint64_t ui64) {
 		write_type(UINT64);
 		write_data(htobe64(ui64));
 	}
@@ -179,7 +159,9 @@ private:
 	void write_type(TYPE t) {
 		m_out.write(reinterpret_cast<char *>(&t), sizeof(t));
 		if (!m_out) {
-			throw serial_exception("failed to write native type %d ", t);
+			std::ostringstream oss;
+			oss << "failed to write native type " << t;
+			throw serial_exception(oss.str());
 		}
 	}
 
@@ -352,7 +334,9 @@ private:
 			throw serial_exception("failed to read native type");
 		}
 		if (_t != t) {
-			throw serial_exception("unmatched native type expect %d, actual %d", t, _t);
+			std::ostringstream oss;
+			oss << "unmatched native type expect " << t << ", actual " << _t;
+			throw serial_exception(oss.str());
 		}
 	}
 
