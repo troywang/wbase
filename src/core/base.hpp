@@ -126,7 +126,6 @@ struct length <type_list <T, U> > {
 #define type_list_7(T1, T2, T3, T4, T5, T6, T7) type_list<T1, type_list_6(T2, T3, T4, T5, T6, T7)>
 #define type_list_8(T1, T2, T3, T4, T5, T6, T7, T8) type_list<T1, type_list_7(T2, T3, T4, T5, T6, T7, T8)>
 #define type_list_9(T1, T2, T3, T4, T5, T6, T7, T8, T9) type_list<T1, type_list_8(T2, T3, T4, T5, T6, T7, T8, T9)>
-#define type_list_10(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) type_list<T1, type_list_9(T2, T3, T4, T5, T6, T7, T8, T9, T10)>
 
 template <typename TList, unsigned int index> struct type_at;
 
@@ -218,13 +217,6 @@ public:
 	virtual ~invoker_impl() {}
 };
 
-template <typename R, typename P1, typename P2, typename P3, typename P4, typename P5, typename P6, typename P7, typename P8, typename P9, typename P10>
-class invoker_impl<R, type_list_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10)> {
-public:
-	virtual R operator()(P1, P2, P3, P4, P5, P6, P7, P8) = 0;
-	virtual ~invoker_impl() {}
-};
-
 template <typename Invoker, typename Func>
 class nonmember_handler : public invoker_impl<typename Invoker::result_type, typename Invoker::arg_list> {
 public:
@@ -274,11 +266,6 @@ public:
 	result_type operator()(typename Invoker::param1 p1, typename Invoker::param2 p2, typename Invoker::param3 p3, typename Invoker::param4 p4, typename Invoker::param5 p5,
 			typename Invoker::param6 p6, typename Invoker::param7 p7, typename Invoker::param8 p8, typename Invoker::param9 p9) {
 		return m_func(p1, p2, p3, p4, p5, p6, p7, p8, p9);
-	}
-
-	result_type operator()(typename Invoker::param1 p1, typename Invoker::param2 p2, typename Invoker::param3 p3, typename Invoker::param4 p4, typename Invoker::param5 p5,
-			typename Invoker::param6 p6, typename Invoker::param7 p7, typename Invoker::param8 p8, typename Invoker::param9 p9, typename Invoker::param10 p10) {
-		return m_func(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
 	}
 
 private:
@@ -337,11 +324,6 @@ public:
 		return (m_pObj->*m_pMemFn)(p1, p2, p3, p4, p5, p6, p7, p8, p9);
 	}
 
-	result_type operator()(typename Invoker::param1 p1, typename Invoker::param2 p2, typename Invoker::param3 p3, typename Invoker::param4 p4, typename Invoker::param5 p5,
-			typename Invoker::param6 p6, typename Invoker::param7 p7, typename Invoker::param8 p8, typename Invoker::param9 p9, typename Invoker::param10 p10) {
-		return (m_pObj->*m_pMemFn)(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
-	}
-
 private:
 	Ptr2Obj m_pObj;
 	Ptr2MemFn m_pMemFn;
@@ -362,7 +344,6 @@ public:
 	typedef typename type_at<ArgList, 6>::value param7;
 	typedef typename type_at<ArgList, 7>::value param8;
 	typedef typename type_at<ArgList, 8>::value param9;
-	typedef typename type_at<ArgList, 9>::value param10;
 
 public:
 	template <typename Func>
@@ -410,10 +391,6 @@ public:
 
 	R operator() (param1 p1, param2 p2, param3 p3, param4 p4, param5 p5, param6 p6, param7 p7, param8 p8, param9 p9) {
 		return (*spImpl)(p1, p2, p3, p4, p5, p6, p7, p8, p9);
-	}
-
-	R operator() (param1 p1, param2 p2, param3 p3, param4 p4, param5 p5, param6 p6, param7 p7, param8 p8, param9 p9, param10 p10) {
-		return (*spImpl)(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
 	}
 
 private:

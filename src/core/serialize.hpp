@@ -45,11 +45,6 @@ private:
 	}
 
 	template<typename T>
-	void write_to(const T *t, int2type<true>) {
-		t->serialize(m_out);
-	}
-
-	template<typename T>
 	void write_to(const T &t, int2type<false>) {
 		native_write(t);
 	}
